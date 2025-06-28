@@ -23,14 +23,14 @@ const quoteDisplay = document.getElementById("quoteDisplay");
 const newQuoteBtn = document.getElementById("newQuote");
 
 
-const quoteInput = document.getElementById("newQuoteText");
-const categoryInput = document.getElementById("newQuoteCategory");
+// const quoteInput = document.getElementById("newQuoteText");
+// const categoryInput = document.getElementById("newQuoteCategory");
 
 // Function to display a random quote
 function showRandomQuote() {
   const randomIndex = Math.floor(Math.random() * quotes.length);
   const randomQuote = quotes[randomIndex];
-  quoteDisplay.textContent = randomQuote.text;
+  quoteDisplay.textContent = `"${randomQuote.text}" - ${randomQuote.category}`;
 }
 
 // Function to create a form for adding new quotes
