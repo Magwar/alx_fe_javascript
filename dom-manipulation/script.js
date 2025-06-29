@@ -104,7 +104,7 @@ async function fetchQuotesFromServer() {
     return apiQuotes;
   } catch (error) {
     console.error("Error fetching quotes from JSONPlaceholder:", error);
-    throw error; // Re-throw to be caught by syncData
+    throw error; // Re-throw to be caught by syncQuotes
   }
 }
 
@@ -171,8 +171,10 @@ function simulateServerPost(quote) {
  * Main function for data synchronization.
  * Fetches server data (from JSONPlaceholder), compares with local, resolves conflicts (server data precedence),
  * and "pushes" local-only new quotes to the server (simulation).
+ * RENAMED from syncData to syncQuotes
  */
-async function syncData() {
+async function syncQuotes() {
+  // RENAMED FUNCTION
   if (isSyncing) {
     console.log("Sync in progress, skipping new sync request.");
     return;
@@ -554,7 +556,7 @@ function exportQuotes() {
 function importFromJsonFile(event) {
   const file = event.target.files[0];
   if (!file) {
-    showMessage("No file selected for import.", "error");
+    showMessage("No file selected.", "error");
     return;
   }
 
@@ -614,7 +616,7 @@ window.onload = async function () {
   createAddQuoteForm(); // 4. Create and add the new quote form
 
   // 5. Perform initial sync
-  await syncData(); // Await the initial sync to ensure local data is up-to-date with server
+  await syncQuotes(); // Await the initial sync to ensure local data is up-to-date with server
 
   // 6. Try to load and display the last viewed quote from session storage,
   //    but ensure it respects the current filter and updated data.
@@ -633,7 +635,7 @@ window.onload = async function () {
   }
 
   // Start periodic sync
-  setInterval(syncData, SYNC_INTERVAL);
+  setInterval(syncQuotes, SYNC_INTERVAL);
 };
 
 // Add event listener to the "Show New Quote" button
@@ -646,6 +648,6 @@ exportQuotesBtn.addEventListener("click", exportQuotes);
 importFile.addEventListener("change", importFromJsonFile);
 
 // Add event listener for the Manual Sync button
-manualSyncBtn.addEventListener("click", syncData);
+manualSyncBtn.addEventListener("click", syncQuotes);
 
 // The categoryFilterDropdown has its onchange attribute directly in HTML: onchange="filterQuotes()"
