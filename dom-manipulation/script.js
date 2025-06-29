@@ -18,8 +18,8 @@ let quotes = [
   },
 ];
 
-// Global variable to store the current filter setting
-let currentCategoryFilter = "all"; // Default filter is 'all'
+// Global variable to store the current filter setting (RENAMED from currentCategoryFilter)
+let selectedCategory = "all"; // Default filter is 'all'
 
 // DOM elements
 const quoteDisplay = document.getElementById("quoteDisplay");
@@ -28,7 +28,7 @@ const addQuoteFormContainer = document.getElementById("addQuoteFormContainer");
 const exportQuotesBtn = document.getElementById("exportQuotesBtn");
 const importFile = document.getElementById("importFile");
 const messageBox = document.getElementById("messageBox");
-const categoryFilterDropdown = document.getElementById("categoryFilter"); // NEW: Get reference to the category filter dropdown
+const categoryFilterDropdown = document.getElementById("categoryFilter");
 
 /**
  * Displays a temporary message to the user.
@@ -122,7 +122,7 @@ function loadLastViewedQuote() {
 }
 
 /**
- * NEW HELPER FUNCTION: Renders a single quote object into the quoteDisplay div.
+ * Helper function: Renders a single quote object into the quoteDisplay div.
  * This centralizes the display logic.
  * @param {Object} quote - The quote object to render.
  */
@@ -142,14 +142,15 @@ function renderQuote(quote) {
 }
 
 /**
- * NEW HELPER FUNCTION: Returns a filtered array of quotes based on the currentCategoryFilter.
+ * Helper function: Returns a filtered array of quotes based on the selectedCategory.
  * @returns {Array<Object>} An array of quotes matching the current filter.
  */
 function getFilteredQuotes() {
-  if (currentCategoryFilter === "all") {
+  if (selectedCategory === "all") {
+    // USED selectedCategory
     return quotes;
   } else {
-    return quotes.filter((quote) => quote.category === currentCategoryFilter);
+    return quotes.filter((quote) => quote.category === selectedCategory); // USED selectedCategory
   }
 }
 
@@ -163,7 +164,7 @@ function showRandomQuote() {
   if (filteredQuotes.length === 0) {
     quoteDisplay.innerHTML = "";
     const noQuoteMessage = document.createElement("p");
-    noQuoteMessage.textContent = `No quotes found for category: "${currentCategoryFilter}". Please add some!`;
+    noQuoteMessage.textContent = `No quotes found for category: "${selectedCategory}". Please add some!`; // USED selectedCategory
     noQuoteMessage.style.fontStyle = "italic";
     quoteDisplay.appendChild(noQuoteMessage);
     saveLastViewedQuote(null); // Clear session storage if no filtered quotes
@@ -176,7 +177,7 @@ function showRandomQuote() {
 }
 
 /**
- * NEW FUNCTION: Populates the category filter dropdown with unique categories from the quotes array.
+ * Populates the category filter dropdown with unique categories from the quotes array.
  */
 function populateCategories() {
   // Start with a Set to automatically get unique categories
@@ -204,56 +205,57 @@ function populateCategories() {
 
   // Set the dropdown to the currently active filter, or 'all' if the filter is no longer available
   if (
-    !sortedCategories.includes(currentCategoryFilter) &&
-    currentCategoryFilter !== "all"
+    !sortedCategories.includes(selectedCategory) &&
+    selectedCategory !== "all"
   ) {
-    currentCategoryFilter = "all"; // Reset filter if category no longer exists
+    // USED selectedCategory
+    selectedCategory = "all"; // USED selectedCategory - Reset filter if category no longer exists
     showMessage(
       'Selected category no longer exists, filter reset to "All Categories".',
       "error"
     );
   }
-  categoryFilterDropdown.value = currentCategoryFilter;
+  categoryFilterDropdown.value = selectedCategory; // USED selectedCategory
   saveCategoryFilter(); // Save the updated filter to local storage
 }
 
 /**
- * NEW FUNCTION: Filters quotes based on the selected category from the dropdown.
+ * Filters quotes based on the selected category from the dropdown.
  * This function is called when the dropdown value changes.
  */
 function filterQuotes() {
-  currentCategoryFilter = categoryFilterDropdown.value; // Update global filter variable
+  selectedCategory = categoryFilterDropdown.value; // USED selectedCategory - Update global filter variable
   saveCategoryFilter(); // Save the selected filter to local storage
   showRandomQuote(); // Display a random quote from the newly filtered set
 }
 
 /**
- * NEW FUNCTION: Saves the current category filter to local storage.
+ * Saves the current category filter to local storage.
  */
 function saveCategoryFilter() {
-  localStorage.setItem("currentCategoryFilter", currentCategoryFilter);
-  console.log("Category filter saved:", currentCategoryFilter);
+  localStorage.setItem("selectedCategory", selectedCategory); // USED selectedCategory
+  console.log("Category filter saved:", selectedCategory); // USED selectedCategory
 }
 
 /**
- * NEW FUNCTION: Loads the saved category filter from local storage.
+ * Loads the saved category filter from local storage.
  * @returns {string} The saved filter, or 'all' if none found.
  */
 function loadCategoryFilter() {
-  const savedFilter = localStorage.getItem("currentCategoryFilter");
+  const savedFilter = localStorage.getItem("selectedCategory"); // USED selectedCategory
   if (savedFilter) {
-    currentCategoryFilter = savedFilter;
-    console.log("Category filter loaded:", currentCategoryFilter);
+    selectedCategory = savedFilter; // USED selectedCategory
+    console.log("Category filter loaded:", selectedCategory); // USED selectedCategory
   } else {
-    currentCategoryFilter = "all";
+    selectedCategory = "all"; // USED selectedCategory
     console.log('No category filter found, defaulting to "all".');
   }
 }
 
 /**
- * MODIFIED FUNCTION: Creates and appends a form for adding new quotes.
- * Now saves quotes to local storage after adding a new one and uses custom messages.
- * Also updates categories dropdown if a new category is added.
+ * Creates and appends a form for adding new quotes.
+ * Saves quotes to local storage after adding a new one and uses custom messages.
+ * Also updates categories dropdown if a new category is introduced.
  */
 function createAddQuoteForm() {
   const formContainer = document.createElement("div");
@@ -282,10 +284,10 @@ function createAddQuoteForm() {
     if (text && category) {
       quotes.push({ text, category });
       saveQuotes(); // Save updated quotes to local storage
-      populateCategories(); // NEW: Update categories dropdown
-      categoryFilterDropdown.value = category; // Set filter to new category
-      currentCategoryFilter = category; // Update global filter variable
-      saveCategoryFilter(); // Save new category filter to local storage
+      populateCategories(); // Update categories dropdown
+      categoryFilterDropdown.value = category; // Set filter dropdown to new category
+      selectedCategory = category; // USED selectedCategory - Update global filter variable
+      saveCategoryFilter(); // Save this new category filter to local storage
 
       quoteInput.value = "";
       categoryInput.value = "";
@@ -346,7 +348,7 @@ function importFromJsonFile(event) {
       ) {
         quotes.push(...importedQuotes);
         saveQuotes();
-        populateCategories(); // NEW: Update categories dropdown after import
+        populateCategories(); // Update categories dropdown after import
         showRandomQuote();
         showMessage("Quotes imported successfully!");
       } else {
