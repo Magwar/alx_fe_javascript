@@ -1,3 +1,5 @@
+/* style.css */
+
 body {
     font-family: Arial, sans-serif;
     display: flex;
@@ -15,6 +17,49 @@ h1 {
     margin-bottom: 25px;
     text-align: center;
 }
+
+/* NEW: Style for the filter section */
+.filter-section {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    padding: 15px 20px;
+}
+
+.filter-section label {
+    font-weight: bold;
+    color: #34495e;
+}
+
+#categoryFilter {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 1em;
+    min-width: 150px;
+    cursor: pointer;
+    background-color: #f8f8f8;
+    appearance: none;
+    /* Remove default dropdown arrow */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%204%205%22%3E%3Cpath%20fill%3D%22%2334495e%22%20d%3D%22M2%200L0%202h4zm0%205L0%203h4z%22%2F%3E%3C%2Fsvg%3E');
+    /* Custom arrow */
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 8px 10px;
+}
+
+#categoryFilter:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+}
+
 
 #quoteDisplay {
     background-color: #ffffff;
@@ -157,12 +202,21 @@ button:active {
         font-size: 0.9em;
     }
 
-    .data-actions {
+    .data-actions,
+    .filter-section {
         flex-direction: column;
+        align-items: stretch;
     }
 
     .data-actions button,
-    .data-actions label {
+    .data-actions label,
+    #categoryFilter {
         width: 100%;
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .filter-section label {
+        text-align: center;
     }
 }
