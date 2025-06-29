@@ -129,7 +129,7 @@ function simulateServerPost(quote) {
             method: "POST",
             body: JSON.stringify(postBody),
             headers: {
-              "Content-type": "application/json; charset=UTF-8",
+              "Content-Type": "application/json; charset=UTF-8", // Capitalized 'Type'
             },
           }
         );
@@ -220,7 +220,7 @@ async function syncQuotes() {
     populateCategories();
     showRandomQuote();
 
-    let syncMessage = `Quotes synced with server!`; // Added for test requirement
+    let syncMessage = `Quotes synced with server!`;
     if (newQuotesFromServerCount > 0) {
       syncMessage += ` ${newQuotesFromServerCount} new from API.`;
     }
@@ -239,13 +239,11 @@ async function syncQuotes() {
     }
 
     updateSyncStatus(syncMessage, "success");
-    // showMessage(syncMessage, 'success'); // Replaced by alert below for test
-    alert(syncMessage); // Using alert as per test requirement
+    alert(syncMessage);
   } catch (error) {
     console.error("Error during sync:", error);
     updateSyncStatus("Sync failed.", "error");
-    // showMessage('Error during data sync. Check console for details.', 'error'); // Replaced by alert below for test
-    alert("Error during data sync. Check console for details."); // Using alert as per test requirement
+    alert("Error during data sync. Check console for details.");
   } finally {
     isSyncing = false;
   }
