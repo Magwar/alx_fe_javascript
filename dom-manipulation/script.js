@@ -22,8 +22,6 @@ let quotes = [
   },
 ];
 
-// REMOVED: mockServerQuotes array, as we're now fetching from JSONPlaceholder
-
 // Global variables for filter and sync status
 let selectedCategory = "all"; // Default filter is 'all'
 let isSyncing = false; // Flag to prevent multiple concurrent sync operations
@@ -118,34 +116,53 @@ async function fetchQuotesFromServer() {
  * @returns {Promise<Object>} A promise that resolves with the "posted" quote (with server ID).
  */
 function simulateServerPost(quote) {
-  // In a real application, you would send this quote to your actual backend API.
-  // For JSONPlaceholder, POSTing to /posts will return the data with a new ID,
-  // but it won't actually be stored persistently on JSONPlaceholder itself.
   console.log("Simulating POST of local quote to server:", quote);
   updateSyncStatus("Posting local data...", "pending");
   return new Promise((resolve) => {
     setTimeout(async () => {
-      // Added async here for fetch if we were to use it.
-      // Simulate a successful post response from server.
-      // JSONPlaceholder would respond with the posted data + new ID, but not persist it.
-      // const response = await fetch('https://jsonplaceholder.typicode.com/posts', {
-      //     method: 'POST',
-      //     body: JSON.stringify(quote),
-      //     headers: { 'Content-type': 'application/json; charset=UTF-8' },
-      // });
-      // const postedData = await response.json();
+      try {
+        // Assign a temporary ID if it doesn't have one for the post body
+        const postBody = {
+          title: quote.text,
+          body: `Category: ${quote.category}`, // Map category to body for JSONPlaceholder
+          userId: 1, // Dummy user ID for JSONPlaceholder
+        };
 
-      // For our current simulation, we'll just acknowledge the "post" and resolve.
-      // Assign a server-like ID if it doesn't have one from local creation
-      const serverAssignedQuote = {
-        ...quote,
-        id: quote.id || generateUniqueId(),
-      };
-      console.log(
-        "Simulated server acknowledged post for:",
-        serverAssignedQuote
-      );
-      resolve(serverAssignedQuote);
+        const response = await fetch(
+          "https://jsonplaceholder.typicode.com/posts",
+          {
+            method: "POST",
+            body: JSON.stringify(postBody),
+            headers: {
+              "Content-type": "application/json; charset=UTF-8", // IMPORTANT: Content-Type header
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const postedData = await response.json();
+
+        // JSONPlaceholder returns the posted data with a new 'id'.
+        // Use this ID for our client-side 'postedQuote'.
+        const serverAssignedQuote = {
+          id: "api-" + postedData.id, // Prefix ID from server
+          text: postedData.title, // Use title from response
+          category: quote.category, // Use original category as JSONPlaceholder doesn't return it
+        };
+
+        console.log(
+          "Simulated server acknowledged post for:",
+          serverAssignedQuote
+        );
+        resolve(serverAssignedQuote);
+      } catch (error) {
+        console.error("Error simulating server post:", error);
+        // Even if fetch fails, we might want to still resolve the promise for the sync logic
+        // For a real app, you'd handle this more robustly (e.g., retry, mark as failed, etc.)
+        resolve({ ...quote, id: quote.id || generateUniqueId() }); // Resolve with client's version if post fails
+      }
     }, 1000); // Simulate network delay
   });
 }
@@ -179,14 +196,10 @@ async function syncData() {
       if (!mergedQuotesMap.has(sQuote.id)) {
         // Only add if not already present (prevents duplicates from same API call)
         mergedQuotesMap.set(sQuote.id, sQuote);
-        // newQuotesFromServerCount is tricky here as JSONPlaceholder quotes are 'new' every time.
-        // For a true count, we'd compare against previous server sync.
-        // For this scenario, we count quotes from API that weren't locally present before merge.
       }
     });
 
     // 2. Identify and handle local-only quotes or update existing ones (local additions get "posted")
-    // This loop also handles existing local quotes and determines if they should be merged or overwritten.
     for (const lQuote of localQuotes) {
       if (!lQuote.id || !mergedQuotesMap.has(lQuote.id)) {
         // If it's a new local quote (no ID) or its ID is not in the mergedMap yet (not from current API fetch)
