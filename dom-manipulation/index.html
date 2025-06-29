@@ -3,12 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="styles.css">
     <title>Dynamic Quote Generator</title>
   </head>
   <body>
     <h1>Dynamic Quote Generator</h1>
-    <div id="quoteDisplay"></div>
+    <div id="quoteDisplay">
+        <!-- Quotes will be displayed here -->
+    </div>
     <button id="newQuote">Show New Quote</button>
+
+    <!-- Placeholder for adding new quotes form - Added via JS -->
+    <div id="addQuoteFormContainer"></div>
+
+    <!-- Container for Import/Export buttons -->
+    <div class="data-actions">
+      <h3>Manage Your Quotes</h3>
+      <button id="exportQuotesBtn">Export Quotes (JSON)</button>
+      <!-- Use a label styled as a button for the file input -->
+      <label for="importFile" class="button">Import Quotes (JSON)</label>
+      <input type="file" id="importFile" accept=".json" />
+    </div>
+
+    <!-- Message box for user feedback -->
+    <div id="messageBox" class="message-box"></div>
+
     <script src="script.js"></script>
   </body>
 </html>
