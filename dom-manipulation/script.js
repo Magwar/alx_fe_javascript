@@ -97,9 +97,11 @@ function generateUniqueId() {
 
 /**
  * Simulates fetching quotes from a server with a delay.
+ * RENAMED from simulateServerFetch to fetchQuotesFromServer
  * @returns {Promise<Array<Object>>} A promise that resolves with the mock server quotes.
  */
-function simulateServerFetch() {
+function fetchQuotesFromServer() {
+  // RENAMED FUNCTION
   updateSyncStatus("Fetching from server...", "pending");
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -148,7 +150,7 @@ async function syncData() {
   let localQuotesPostedCount = 0;
 
   try {
-    const serverQuotes = await simulateServerFetch();
+    const serverQuotes = await fetchQuotesFromServer(); // CALL RENAMED FUNCTION
     const localQuotes = JSON.parse(JSON.stringify(quotes)); // Work with a copy of local quotes
 
     const mergedQuotesMap = new Map(); // Map to build the final merged set, using ID as key
@@ -452,15 +454,18 @@ function createAddQuoteForm() {
     const category = categoryInput.value.trim();
 
     if (text && category) {
-      // NEW: Assign a temporary local ID if not already present
+      // Assign a temporary local ID if not already present
       const newQuote = { id: generateUniqueId(), text, category };
       quotes.push(newQuote);
-      saveQuotes();
-      populateCategories();
-      categoryFilterDropdown.value = category;
-      selectedCategory = category;
-      saveCategoryFilter();
-      showRandomQuote();
+      saveQuotes(); // Save updated quotes to local storage
+      populateCategories(); // Update categories dropdown
+      categoryFilterDropdown.value = category; // Set filter to new category
+      selectedCategory = category; // Update global filter variable
+      saveCategoryFilter(); // Save new category filter to local storage
+
+      quoteInput.value = "";
+      categoryInput.value = "";
+      showRandomQuote(); // Show a random quote from the (potentially new) filtered set
       showMessage("Quote added successfully!", "success");
     } else {
       showMessage("Please enter both a quote and a category.", "error");
