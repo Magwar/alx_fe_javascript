@@ -18,7 +18,42 @@ h1 {
     text-align: center;
 }
 
-/* NEW: Style for the filter section */
+/* Sync Status styles */
+.sync-status {
+    background-color: #e0f2f7;
+    /* Light blue */
+    color: #01579b;
+    /* Dark blue text */
+    padding: 10px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 0.9em;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.sync-status.success {
+    background-color: #d4edda;
+    /* Light green */
+    color: #155724;
+    /* Dark green */
+}
+
+.sync-status.error {
+    background-color: #f8d7da;
+    /* Light red */
+    color: #721c24;
+    /* Dark red */
+}
+
+.sync-status.pending {
+    background-color: #fff3cd;
+    /* Light yellow */
+    color: #856404;
+    /* Dark yellow */
+}
+
+
 .filter-section {
     margin-bottom: 20px;
     display: flex;
@@ -44,11 +79,9 @@ h1 {
     cursor: pointer;
     background-color: #f8f8f8;
     appearance: none;
-    /* Remove default dropdown arrow */
     -webkit-appearance: none;
     -moz-appearance: none;
     background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%204%205%22%3E%3Cpath%20fill%3D%22%2334495e%22%20d%3D%22M2%200L0%202h4zm0%205L0%203h4z%22%2F%3E%3C%2Fsvg%3E');
-    /* Custom arrow */
     background-repeat: no-repeat;
     background-position: right 10px center;
     background-size: 8px 10px;
