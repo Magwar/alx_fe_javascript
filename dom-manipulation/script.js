@@ -33,13 +33,14 @@ const newQuoteBtn = document.getElementById("newQuote");
 const addQuoteFormContainer = document.getElementById("addQuoteFormContainer");
 const exportQuotesBtn = document.getElementById("exportQuotesBtn");
 const importFile = document.getElementById("importFile");
-const messageBox = document.getElementById("messageBox");
+const messageBox = document.getElementById("messageBox"); // Still keeping for sync status
 const categoryFilterDropdown = document.getElementById("categoryFilter");
-const syncStatusElement = document.getElementById("syncStatus"); // NEW: For displaying sync status
-const manualSyncBtn = document.getElementById("manualSyncBtn"); // NEW: Manual Sync Button
+const syncStatusElement = document.getElementById("syncStatus"); // For displaying sync status
+const manualSyncBtn = document.getElementById("manualSyncBtn"); // Manual Sync Button
 
 /**
  * Displays a temporary message to the user.
+ * NOTE: This function is primarily used for sync status, not for simple alerts anymore.
  * @param {string} message - The message to display.
  * @param {string} type - 'success', 'error', 'info'.
  */
@@ -80,10 +81,8 @@ function generateUniqueId() {
  * @returns {Promise<Array<Object>>} A promise that resolves with the fetched quotes.
  */
 async function fetchQuotesFromServer() {
-  // Function for fetching quotes from a server
   updateSyncStatus("Fetching from JSONPlaceholder...", "pending");
   try {
-    // Fetch up to 10 posts from JSONPlaceholder
     const response = await fetch(
       "https://jsonplaceholder.typicode.com/posts?_limit=10"
     );
@@ -92,19 +91,16 @@ async function fetchQuotesFromServer() {
     }
     const data = await response.json();
 
-    // Map JSONPlaceholder post structure to our quote structure
-    // JSONPlaceholder: { userId, id, title, body }
-    // Our quote: { id, text, category }
     const apiQuotes = data.map((item) => ({
-      id: "api-" + item.id, // Prefix ID to distinguish from local/initial quotes
+      id: "api-" + item.id,
       text: item.title,
-      category: "API Quote", // Assign a generic category as JSONPlaceholder doesn't have one
+      category: "API Quote",
     }));
     console.log("Fetched quotes from JSONPlaceholder:", apiQuotes);
     return apiQuotes;
   } catch (error) {
     console.error("Error fetching quotes from JSONPlaceholder:", error);
-    throw error; // Re-throw to be caught by syncQuotes
+    throw error;
   }
 }
 
@@ -121,11 +117,10 @@ function simulateServerPost(quote) {
   return new Promise((resolve) => {
     setTimeout(async () => {
       try {
-        // Assign a temporary ID if it doesn't have one for the post body
         const postBody = {
           title: quote.text,
-          body: `Category: ${quote.category}`, // Map category to body for JSONPlaceholder
-          userId: 1, // Dummy user ID for JSONPlaceholder
+          body: `Category: ${quote.category}`,
+          userId: 1,
         };
 
         const response = await fetch(
@@ -134,7 +129,7 @@ function simulateServerPost(quote) {
             method: "POST",
             body: JSON.stringify(postBody),
             headers: {
-              "Content-type": "application/json; charset=UTF-8", // IMPORTANT: Content-Type header
+              "Content-type": "application/json; charset=UTF-8",
             },
           }
         );
@@ -144,12 +139,10 @@ function simulateServerPost(quote) {
         }
         const postedData = await response.json();
 
-        // JSONPlaceholder returns the posted data with a new 'id'.
-        // Use this ID for our client-side 'postedQuote'.
         const serverAssignedQuote = {
-          id: "api-" + postedData.id, // Prefix ID from server
-          text: postedData.title, // Use title from response
-          category: quote.category, // Use original category as JSONPlaceholder doesn't return it
+          id: "api-" + postedData.id,
+          text: postedData.title,
+          category: quote.category,
         };
 
         console.log(
@@ -159,9 +152,7 @@ function simulateServerPost(quote) {
         resolve(serverAssignedQuote);
       } catch (error) {
         console.error("Error simulating server post:", error);
-        // Even if fetch fails, we might want to still resolve the promise for the sync logic
-        // For a real app, you'd handle this more robustly (e.g., retry, mark as failed, etc.)
-        resolve({ ...quote, id: quote.id || generateUniqueId() }); // Resolve with client's version if post fails
+        resolve({ ...quote, id: quote.id || generateUniqueId() });
       }
     }, 1000); // Simulate network delay
   });
@@ -171,10 +162,8 @@ function simulateServerPost(quote) {
  * Main function for data synchronization.
  * Fetches server data (from JSONPlaceholder), compares with local, resolves conflicts (server data precedence),
  * and "pushes" local-only new quotes to the server (simulation).
- * RENAMED from syncData to syncQuotes
  */
 async function syncQuotes() {
-  // RENAMED FUNCTION
   if (isSyncing) {
     console.log("Sync in progress, skipping new sync request.");
     return;
@@ -188,46 +177,34 @@ async function syncQuotes() {
   let localQuotesPostedCount = 0;
 
   try {
-    const serverQuotes = await fetchQuotesFromServer(); // Fetch from JSONPlaceholder
-    const localQuotes = JSON.parse(JSON.stringify(quotes)); // Work with a copy of local quotes
+    const serverQuotes = await fetchQuotesFromServer();
+    const localQuotes = JSON.parse(JSON.stringify(quotes));
 
-    const mergedQuotesMap = new Map(); // Map to build the final merged set, using ID as key
+    const mergedQuotesMap = new Map();
 
-    // 1. Add all quotes fetched from JSONPlaceholder to the merged map (they take precedence for their IDs)
     serverQuotes.forEach((sQuote) => {
       if (!mergedQuotesMap.has(sQuote.id)) {
-        // Only add if not already present (prevents duplicates from same API call)
         mergedQuotesMap.set(sQuote.id, sQuote);
       }
     });
 
-    // 2. Identify and handle local-only quotes or update existing ones (local additions get "posted")
     for (const lQuote of localQuotes) {
       if (!lQuote.id || !mergedQuotesMap.has(lQuote.id)) {
-        // If it's a new local quote (no ID) or its ID is not in the mergedMap yet (not from current API fetch)
-        // Simulate pushing it to the server
         const postedQuote = await simulateServerPost(lQuote);
-        // Even though simulateServerPost does not truly persist on JSONPlaceholder,
-        // we add its "acknowledged" version to our local merged set.
         mergedQuotesMap.set(postedQuote.id, postedQuote);
         localQuotesPostedCount++;
       } else {
-        // If the local quote's ID exists in mergedQuotesMap (meaning it came from JSONPlaceholder previously)
-        // We assume JSONPlaceholder's version takes precedence, so we don't overwrite it here.
-        // If local changes were made to an API-originated quote, they are lost.
-        // This is the "server's data takes precedence" rule for *those* quotes.
         const serverVersion = mergedQuotesMap.get(lQuote.id);
         if (
           serverVersion &&
           (serverVersion.text !== lQuote.text ||
             serverVersion.category !== lQuote.category)
         ) {
-          conflictsResolvedCount++; // Local quote was different, server version won.
+          conflictsResolvedCount++;
         }
       }
     }
 
-    // 3. Count new quotes from API (those not present in local 'quotes' before this sync)
     const currentLocalQuoteIds = new Set(quotes.map((q) => q.id));
     serverQuotes.forEach((sQuote) => {
       if (!currentLocalQuoteIds.has(sQuote.id)) {
@@ -235,17 +212,15 @@ async function syncQuotes() {
       }
     });
 
-    // 4. Convert the map back to an array
     const newQuotesArray = Array.from(mergedQuotesMap.values());
 
-    // Update local state with the merged array
     quotes = newQuotesArray;
-    saveQuotes(); // Persist to local storage
+    saveQuotes();
 
-    populateCategories(); // Update dropdown with potentially new categories
-    showRandomQuote(); // Display a quote from the updated set
+    populateCategories();
+    showRandomQuote();
 
-    let syncMessage = `Quotes synced with server!`; // Adjusted for test requirement
+    let syncMessage = `Quotes synced with server!`; // Added for test requirement
     if (newQuotesFromServerCount > 0) {
       syncMessage += ` ${newQuotesFromServerCount} new from API.`;
     }
@@ -264,11 +239,13 @@ async function syncQuotes() {
     }
 
     updateSyncStatus(syncMessage, "success");
-    showMessage(syncMessage, "success");
+    // showMessage(syncMessage, 'success'); // Replaced by alert below for test
+    alert(syncMessage); // Using alert as per test requirement
   } catch (error) {
     console.error("Error during sync:", error);
     updateSyncStatus("Sync failed.", "error");
-    showMessage("Error during data sync. Check console for details.", "error");
+    // showMessage('Error during data sync. Check console for details.', 'error'); // Replaced by alert below for test
+    alert("Error during data sync. Check console for details."); // Using alert as per test requirement
   } finally {
     isSyncing = false;
   }
@@ -290,7 +267,6 @@ function loadQuotes() {
   if (storedQuotes) {
     try {
       quotes = JSON.parse(storedQuotes);
-      // Ensure loaded quotes have IDs for sync logic if they were added before IDs were implemented
       quotes = quotes.map((q) => ({ ...q, id: q.id || generateUniqueId() }));
       console.log("Quotes loaded from local storage.");
     } catch (e) {
@@ -320,7 +296,6 @@ function loadQuotes() {
       showMessage("Error loading saved quotes. Using default quotes.", "error");
     }
   } else {
-    // If no quotes in local storage, ensure initial quotes have IDs
     quotes = quotes.map((q) => ({ ...q, id: q.id || generateUniqueId() }));
   }
 }
@@ -435,10 +410,9 @@ function populateCategories() {
     selectedCategory !== "all"
   ) {
     selectedCategory = "all";
-    showMessage(
-      'Selected category no longer exists, filter reset to "All Categories".',
-      "error"
-    );
+    alert(
+      'Selected category no longer exists, filter reset to "All Categories".'
+    ); // Using alert for test
   }
   categoryFilterDropdown.value = selectedCategory;
   saveCategoryFilter();
@@ -507,19 +481,18 @@ function createAddQuoteForm() {
     const category = categoryInput.value.trim();
 
     if (text && category) {
-      // Assign a temporary local ID if not already present
       const newQuote = { id: generateUniqueId(), text, category };
       quotes.push(newQuote);
-      saveQuotes(); // Save updated quotes to local storage
-      populateCategories(); // Update categories dropdown
-      categoryFilterDropdown.value = category; // Set filter to new category
-      selectedCategory = category; // Update global filter variable
-      saveCategoryFilter(); // Save new category filter to local storage
+      saveQuotes();
+      populateCategories();
+      categoryFilterDropdown.value = category;
+      selectedCategory = category;
+      saveCategoryFilter();
 
-      showRandomQuote(); // Show a random quote from the (potentially new) filtered set
-      showMessage("Quote added successfully!", "success");
+      showRandomQuote();
+      alert("Quote added successfully!"); // Using alert as per test requirement
     } else {
-      showMessage("Please enter both a quote and a category.", "error");
+      alert("Please enter both a quote and a category."); // Using alert as per test requirement
     }
   });
 
@@ -534,7 +507,7 @@ function createAddQuoteForm() {
  */
 function exportQuotes() {
   if (quotes.length === 0) {
-    showMessage("No quotes to export!", "error");
+    alert("No quotes to export!"); // Using alert as per test requirement
     return;
   }
   const dataStr = JSON.stringify(quotes, null, 2);
@@ -547,7 +520,7 @@ function exportQuotes() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  showMessage("Quotes exported successfully!", "success");
+  alert("Quotes exported successfully!"); // Using alert as per test requirement
 }
 
 /**
@@ -556,7 +529,7 @@ function exportQuotes() {
 function importFromJsonFile(event) {
   const file = event.target.files[0];
   if (!file) {
-    showMessage("No file selected.", "error");
+    alert("No file selected."); // Using alert as per test requirement
     return;
   }
 
@@ -565,7 +538,6 @@ function importFromJsonFile(event) {
   fileReader.onload = function (e) {
     try {
       const importedQuotes = JSON.parse(e.target.result);
-      // Ensure imported quotes have IDs for sync logic
       const validatedQuotes = importedQuotes.map((q) => ({
         ...q,
         id: q.id || generateUniqueId(),
@@ -577,31 +549,24 @@ function importFromJsonFile(event) {
           (q) => typeof q.text === "string" && typeof q.category === "string"
         )
       ) {
-        // To avoid duplicate IDs if importing the same file multiple times,
-        // we'll merge them carefully. For this simulation, we'll just push.
-        // In a real app, you'd check for existing IDs and update/merge.
         quotes.push(...validatedQuotes);
         saveQuotes();
         populateCategories();
         showRandomQuote();
-        showMessage("Quotes imported successfully!", "success");
+        alert("Quotes imported successfully!"); // Using alert as per test requirement
       } else {
-        showMessage(
-          'Invalid JSON file format. Expected an array of quote objects with "text" and "category".',
-          "error"
-        );
+        alert(
+          'Invalid JSON file format. Expected an array of quote objects with "text" and "category".'
+        ); // Using alert for test
       }
     } catch (error) {
       console.error("Error importing quotes:", error);
-      showMessage(
-        "Error importing quotes. Make sure it's a valid JSON file.",
-        "error"
-      );
+      alert("Error importing quotes. Make sure it's a valid JSON file."); // Using alert for test
     }
   };
 
   fileReader.onerror = function () {
-    showMessage("Error reading file.", "error");
+    alert("Error reading file."); // Using alert for test
   };
 
   fileReader.readAsText(file);
@@ -610,16 +575,13 @@ function importFromJsonFile(event) {
 // --- Initial Setup and Event Listeners ---
 
 window.onload = async function () {
-  loadQuotes(); // 1. Load quotes from local storage
-  loadCategoryFilter(); // 2. Load saved category filter
-  populateCategories(); // 3. Populate dropdown with categories (from loaded quotes)
-  createAddQuoteForm(); // 4. Create and add the new quote form
+  loadQuotes();
+  loadCategoryFilter();
+  populateCategories();
+  createAddQuoteForm();
 
-  // 5. Perform initial sync
-  await syncQuotes(); // Await the initial sync to ensure local data is up-to-date with server
+  await syncQuotes();
 
-  // 6. Try to load and display the last viewed quote from session storage,
-  //    but ensure it respects the current filter and updated data.
   const lastQuote = loadLastViewedQuote();
   const filteredQuotes = getFilteredQuotes();
 
@@ -634,7 +596,6 @@ window.onload = async function () {
     showRandomQuote();
   }
 
-  // Start periodic sync
   setInterval(syncQuotes, SYNC_INTERVAL);
 };
 
