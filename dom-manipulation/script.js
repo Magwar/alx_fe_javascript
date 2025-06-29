@@ -245,15 +245,15 @@ async function syncQuotes() {
     populateCategories(); // Update dropdown with potentially new categories
     showRandomQuote(); // Display a quote from the updated set
 
-    let syncMessage = `Data synced successfully!`;
+    let syncMessage = `Quotes synced with server!`; // Adjusted for test requirement
     if (newQuotesFromServerCount > 0) {
-      syncMessage += ` ${newQuotesFromServerCount} new quotes from API.`;
+      syncMessage += ` ${newQuotesFromServerCount} new from API.`;
     }
     if (localQuotesPostedCount > 0) {
-      syncMessage += ` ${localQuotesPostedCount} local quotes "posted" to server.`;
+      syncMessage += ` ${localQuotesPostedCount} local posted.`;
     }
     if (conflictsResolvedCount > 0) {
-      syncMessage += ` ${conflictsResolvedCount} local conflicts resolved (API precedence).`;
+      syncMessage += ` ${conflictsResolvedCount} conflicts resolved.`;
     }
     if (
       newQuotesFromServerCount === 0 &&
