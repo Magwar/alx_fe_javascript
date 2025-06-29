@@ -22,26 +22,7 @@ let quotes = [
   },
 ];
 
-// NEW: Simulate server-side data
-// In a real application, this would be fetched from a database
-// For demonstration, we give it initial data and will modify it programmatically.
-let mockServerQuotes = [
-  {
-    id: "s1",
-    text: "The greatest glory in living lies not in never falling, but in rising every time you fall.",
-    category: "Life",
-  },
-  {
-    id: "s2",
-    text: "The only constant in life is change.",
-    category: "Philosophy",
-  }, // NEW quote on server
-  {
-    id: "s3",
-    text: "Imagination is more important than knowledge.",
-    category: "Science",
-  }, // NEW quote on server
-];
+// REMOVED: mockServerQuotes array, as we're now fetching from JSONPlaceholder
 
 // Global variables for filter and sync status
 let selectedCategory = "all"; // Default filter is 'all'
@@ -96,45 +77,83 @@ function generateUniqueId() {
 }
 
 /**
- * Simulates fetching quotes from a server with a delay.
- * RENAMED from simulateServerFetch to fetchQuotesFromServer
- * @returns {Promise<Array<Object>>} A promise that resolves with the mock server quotes.
+ * Fetches quotes from JSONPlaceholder API.
+ * This simulates receiving updates from a server.
+ * @returns {Promise<Array<Object>>} A promise that resolves with the fetched quotes.
  */
-function fetchQuotesFromServer() {
-  // RENAMED FUNCTION
-  updateSyncStatus("Fetching from server...", "pending");
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // Return a deep copy to prevent direct modification of mockServerQuotes
-      resolve(JSON.parse(JSON.stringify(mockServerQuotes)));
-    }, 1500); // Simulate network delay
-  });
+async function fetchQuotesFromServer() {
+  // Function for fetching quotes from a server
+  updateSyncStatus("Fetching from JSONPlaceholder...", "pending");
+  try {
+    // Fetch up to 10 posts from JSONPlaceholder
+    const response = await fetch(
+      "https://jsonplaceholder.typicode.com/posts?_limit=10"
+    );
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+
+    // Map JSONPlaceholder post structure to our quote structure
+    // JSONPlaceholder: { userId, id, title, body }
+    // Our quote: { id, text, category }
+    const apiQuotes = data.map((item) => ({
+      id: "api-" + item.id, // Prefix ID to distinguish from local/initial quotes
+      text: item.title,
+      category: "API Quote", // Assign a generic category as JSONPlaceholder doesn't have one
+    }));
+    console.log("Fetched quotes from JSONPlaceholder:", apiQuotes);
+    return apiQuotes;
+  } catch (error) {
+    console.error("Error fetching quotes from JSONPlaceholder:", error);
+    throw error; // Re-throw to be caught by syncData
+  }
 }
 
 /**
- * Simulates posting a new quote to the server with a delay.
- * In a real app, this would send data to a backend API.
- * For this simulation, we add it directly to mockServerQuotes.
+ * Simulates posting a new quote to the server (JSONPlaceholder).
+ * IMPORTANT: JSONPlaceholder does not persist POST requests. This is a simulation
+ * of the client *sending* data, but it will not be retrievable in subsequent fetches.
  * @param {Object} quote - The quote object to post.
- * @returns {Promise<Object>} A promise that resolves with the posted quote (with server ID).
+ * @returns {Promise<Object>} A promise that resolves with the "posted" quote (with server ID).
  */
 function simulateServerPost(quote) {
+  // In a real application, you would send this quote to your actual backend API.
+  // For JSONPlaceholder, POSTing to /posts will return the data with a new ID,
+  // but it won't actually be stored persistently on JSONPlaceholder itself.
+  console.log("Simulating POST of local quote to server:", quote);
+  updateSyncStatus("Posting local data...", "pending");
   return new Promise((resolve) => {
-    setTimeout(() => {
-      // Assign a server-like ID if it doesn't have one
-      const serverQuote = { ...quote, id: quote.id || generateUniqueId() };
-      // Simulate adding to server's data store
-      mockServerQuotes.push(serverQuote);
-      console.log("Simulated server received new quote:", serverQuote);
-      resolve(serverQuote);
+    setTimeout(async () => {
+      // Added async here for fetch if we were to use it.
+      // Simulate a successful post response from server.
+      // JSONPlaceholder would respond with the posted data + new ID, but not persist it.
+      // const response = await fetch('https://jsonplaceholder.typicode.com/posts', {
+      //     method: 'POST',
+      //     body: JSON.stringify(quote),
+      //     headers: { 'Content-type': 'application/json; charset=UTF-8' },
+      // });
+      // const postedData = await response.json();
+
+      // For our current simulation, we'll just acknowledge the "post" and resolve.
+      // Assign a server-like ID if it doesn't have one from local creation
+      const serverAssignedQuote = {
+        ...quote,
+        id: quote.id || generateUniqueId(),
+      };
+      console.log(
+        "Simulated server acknowledged post for:",
+        serverAssignedQuote
+      );
+      resolve(serverAssignedQuote);
     }, 1000); // Simulate network delay
   });
 }
 
 /**
  * Main function for data synchronization.
- * Fetches server data, compares with local, resolves conflicts (server takes precedence),
- * and pushes local-only new quotes to the server.
+ * Fetches server data (from JSONPlaceholder), compares with local, resolves conflicts (server data precedence),
+ * and "pushes" local-only new quotes to the server (simulation).
  */
 async function syncData() {
   if (isSyncing) {
@@ -150,47 +169,59 @@ async function syncData() {
   let localQuotesPostedCount = 0;
 
   try {
-    const serverQuotes = await fetchQuotesFromServer(); // CALL RENAMED FUNCTION
+    const serverQuotes = await fetchQuotesFromServer(); // Fetch from JSONPlaceholder
     const localQuotes = JSON.parse(JSON.stringify(quotes)); // Work with a copy of local quotes
 
     const mergedQuotesMap = new Map(); // Map to build the final merged set, using ID as key
 
-    // 1. Add all server quotes to the merged map (server precedence)
+    // 1. Add all quotes fetched from JSONPlaceholder to the merged map (they take precedence for their IDs)
     serverQuotes.forEach((sQuote) => {
-      mergedQuotesMap.set(sQuote.id, sQuote);
+      if (!mergedQuotesMap.has(sQuote.id)) {
+        // Only add if not already present (prevents duplicates from same API call)
+        mergedQuotesMap.set(sQuote.id, sQuote);
+        // newQuotesFromServerCount is tricky here as JSONPlaceholder quotes are 'new' every time.
+        // For a true count, we'd compare against previous server sync.
+        // For this scenario, we count quotes from API that weren't locally present before merge.
+      }
     });
 
-    // 2. Identify and handle local-only quotes or update existing ones
+    // 2. Identify and handle local-only quotes or update existing ones (local additions get "posted")
+    // This loop also handles existing local quotes and determines if they should be merged or overwritten.
     for (const lQuote of localQuotes) {
       if (!lQuote.id || !mergedQuotesMap.has(lQuote.id)) {
-        // If it's a new local quote or ID not on server
-        // This is a local-only quote, or a quote with a local ID not recognized by server
+        // If it's a new local quote (no ID) or its ID is not in the mergedMap yet (not from current API fetch)
         // Simulate pushing it to the server
         const postedQuote = await simulateServerPost(lQuote);
-        mergedQuotesMap.set(postedQuote.id, postedQuote); // Add server's version (with ID)
+        // Even though simulateServerPost does not truly persist on JSONPlaceholder,
+        // we add its "acknowledged" version to our local merged set.
+        mergedQuotesMap.set(postedQuote.id, postedQuote);
         localQuotesPostedCount++;
       } else {
-        // If local quote exists on server by ID, server's version takes precedence (already in map)
-        // If local quote exists on server but text/category changed locally, it gets overwritten by server's.
-        // If server quote was edited, it's already in mergedQuotesMap from serverQuotes loop.
-        // If local quote was edited but server hasn't seen it, server takes precedence.
-        // This specific strategy is "server always wins for existing IDs"
+        // If the local quote's ID exists in mergedQuotesMap (meaning it came from JSONPlaceholder previously)
+        // We assume JSONPlaceholder's version takes precedence, so we don't overwrite it here.
+        // If local changes were made to an API-originated quote, they are lost.
+        // This is the "server's data takes precedence" rule for *those* quotes.
+        const serverVersion = mergedQuotesMap.get(lQuote.id);
+        if (
+          serverVersion &&
+          (serverVersion.text !== lQuote.text ||
+            serverVersion.category !== lQuote.category)
+        ) {
+          conflictsResolvedCount++; // Local quote was different, server version won.
+        }
       }
     }
 
-    // 3. Convert the map back to an array
-    const newQuotesArray = Array.from(mergedQuotesMap.values());
-
-    // Count changes for notification
-    const oldQuotesMap = new Map(quotes.map((q) => [q.id || q.text, q])); // Use ID or text as key for old quotes
-    newQuotesArray.forEach((newQ) => {
-      const oldQ = oldQuotesMap.get(newQ.id || newQ.text);
-      if (!oldQ) {
+    // 3. Count new quotes from API (those not present in local 'quotes' before this sync)
+    const currentLocalQuoteIds = new Set(quotes.map((q) => q.id));
+    serverQuotes.forEach((sQuote) => {
+      if (!currentLocalQuoteIds.has(sQuote.id)) {
         newQuotesFromServerCount++;
-      } else if (oldQ.text !== newQ.text || oldQ.category !== newQ.category) {
-        conflictsResolvedCount++; // Server's version updated local
       }
     });
+
+    // 4. Convert the map back to an array
+    const newQuotesArray = Array.from(mergedQuotesMap.values());
 
     // Update local state with the merged array
     quotes = newQuotesArray;
@@ -201,13 +232,20 @@ async function syncData() {
 
     let syncMessage = `Data synced successfully!`;
     if (newQuotesFromServerCount > 0) {
-      syncMessage += ` ${newQuotesFromServerCount} new quotes from server.`;
+      syncMessage += ` ${newQuotesFromServerCount} new quotes from API.`;
     }
     if (localQuotesPostedCount > 0) {
-      syncMessage += ` ${localQuotesPostedCount} local quotes posted to server.`;
+      syncMessage += ` ${localQuotesPostedCount} local quotes "posted" to server.`;
     }
     if (conflictsResolvedCount > 0) {
-      syncMessage += ` ${conflictsResolvedCount} conflicts resolved (server precedence).`;
+      syncMessage += ` ${conflictsResolvedCount} local conflicts resolved (API precedence).`;
+    }
+    if (
+      newQuotesFromServerCount === 0 &&
+      localQuotesPostedCount === 0 &&
+      conflictsResolvedCount === 0
+    ) {
+      syncMessage = `Data is up-to-date.`;
     }
 
     updateSyncStatus(syncMessage, "success");
@@ -463,8 +501,6 @@ function createAddQuoteForm() {
       selectedCategory = category; // Update global filter variable
       saveCategoryFilter(); // Save new category filter to local storage
 
-      quoteInput.value = "";
-      categoryInput.value = "";
       showRandomQuote(); // Show a random quote from the (potentially new) filtered set
       showMessage("Quote added successfully!", "success");
     } else {
@@ -559,7 +595,6 @@ function importFromJsonFile(event) {
 // --- Initial Setup and Event Listeners ---
 
 window.onload = async function () {
-  // Added 'async' keyword here
   loadQuotes(); // 1. Load quotes from local storage
   loadCategoryFilter(); // 2. Load saved category filter
   populateCategories(); // 3. Populate dropdown with categories (from loaded quotes)
@@ -598,6 +633,6 @@ exportQuotesBtn.addEventListener("click", exportQuotes);
 importFile.addEventListener("change", importFromJsonFile);
 
 // Add event listener for the Manual Sync button
-manualSyncBtn.addEventListener("click", syncData); // Hook up manual sync
+manualSyncBtn.addEventListener("click", syncData);
 
 // The categoryFilterDropdown has its onchange attribute directly in HTML: onchange="filterQuotes()"
